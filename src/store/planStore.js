@@ -46,6 +46,60 @@ const defaultPlan = {
       amountMode: 'today',
       escalation: 0.06, // follows inflation
       priority: 'must'
+    },
+    {
+      id: 'yearly-household',
+      name: 'Yearly Household Expenses',
+      type: 'yearly',
+      amount: 200000, // ₹2 lakh
+      amountMode: 'today',
+      startYear: new Date().getFullYear(),
+      endYear: new Date().getFullYear() + 30,
+      escalation: 0.06,
+      priority: 'must'
+    },
+    {
+      id: 'yearly-travel',
+      name: 'Yearly Travel & Vacations',
+      type: 'yearly',
+      amount: 150000, // ₹1.5 lakh
+      amountMode: 'today',
+      startYear: new Date().getFullYear(),
+      endYear: new Date().getFullYear() + 30,
+      escalation: 0.06,
+      priority: 'optional'
+    },
+    {
+      id: 'yearly-medical-insurance',
+      name: 'Medical, Insurance & Hobbies',
+      type: 'yearly',
+      amount: 100000, // ₹1 lakh
+      amountMode: 'today',
+      startYear: new Date().getFullYear(),
+      endYear: new Date().getFullYear() + 40,
+      escalation: 0.07, // medical inflation is higher
+      priority: 'must'
+    },
+    {
+      id: 'yearly-child-fees',
+      name: 'Yearly Child School Fees',
+      type: 'yearly',
+      amount: 200000, // ₹2 lakh
+      amountMode: 'today',
+      startYear: new Date().getFullYear(),
+      endYear: new Date().getFullYear() + 15,
+      escalation: 0.08, // education inflation
+      priority: 'must'
+    },
+    {
+      id: 'child-graduation',
+      name: 'Child Higher Education (Graduation)',
+      type: 'onetime',
+      amount: 2500000, // ₹25 lakh
+      amountMode: 'today',
+      targetYear: new Date().getFullYear() + 15,
+      escalation: 0.08,
+      priority: 'must'
     }
   ],
   
@@ -74,14 +128,20 @@ export const assetCategories = [
 
 // Expense type presets
 export const expensePresets = [
-  { id: 'child_education', name: 'Child Education', type: 'onetime', icon: '🎓', defaultAmount: 2500000 },
+  // Yearly recurring expenses
+  { id: 'household', name: 'Yearly Household Expenses', type: 'yearly', icon: '🏠', defaultAmount: 200000 },
+  { id: 'vacation', name: 'Yearly Travel & Vacations', type: 'yearly', icon: '✈️', defaultAmount: 150000 },
+  { id: 'medical_insurance', name: 'Medical, Insurance & Hobbies', type: 'yearly', icon: '🏥', defaultAmount: 100000 },
+  { id: 'child_fees', name: 'Yearly Child School Fees', type: 'yearly', icon: '📚', defaultAmount: 200000 },
+  { id: 'insurance', name: 'Insurance Premiums', type: 'yearly', icon: '🛡️', defaultAmount: 100000 },
+  { id: 'gifts', name: 'Gifts & Charity', type: 'yearly', icon: '🎁', defaultAmount: 50000 },
+  // One-time goals
+  { id: 'child_graduation', name: 'Child Higher Education', type: 'onetime', icon: '🎓', defaultAmount: 2500000 },
   { id: 'child_marriage', name: 'Child Marriage', type: 'onetime', icon: '💒', defaultAmount: 3000000 },
   { id: 'car', name: 'Car Purchase', type: 'onetime', icon: '🚗', defaultAmount: 1500000 },
-  { id: 'home_renovation', name: 'Home Renovation', type: 'onetime', icon: '🏠', defaultAmount: 2000000 },
-  { id: 'medical_fund', name: 'Medical Emergency Fund', type: 'onetime', icon: '🏥', defaultAmount: 1000000 },
-  { id: 'vacation', name: 'Annual Vacation', type: 'yearly', icon: '✈️', defaultAmount: 200000 },
-  { id: 'insurance', name: 'Insurance Premiums', type: 'yearly', icon: '🛡️', defaultAmount: 100000 },
-  { id: 'gifts', name: 'Gifts & Charity', type: 'yearly', icon: '🎁', defaultAmount: 50000 }
+  { id: 'home_renovation', name: 'Home Renovation', type: 'onetime', icon: '🔧', defaultAmount: 2000000 },
+  { id: 'medical_fund', name: 'Medical Emergency Fund', type: 'onetime', icon: '💊', defaultAmount: 1000000 },
+  { id: 'home_purchase', name: 'Home Down Payment', type: 'onetime', icon: '🏡', defaultAmount: 5000000 }
 ]
 
 // Income stream presets

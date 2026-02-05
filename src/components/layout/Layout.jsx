@@ -3,6 +3,9 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import Button from '../ui/Button'
 
+// Check if user is in guest mode
+const isGuestMode = () => localStorage.getItem('guestMode') === 'true'
+
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
   { name: 'Calculator', href: '/calculator', icon: CalculatorIcon },
@@ -56,9 +59,13 @@ export default function Layout({ children }) {
   const { user, logout } = useAuth()
 
   const handleLogout = async () => {
+    // Clear guest mode if active
+    localStorage.removeItem('guestMode')
     await logout()
     navigate('/')
   }
+
+  const guestMode = isGuestMode()
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -151,21 +158,28 @@ export default function Layout({ children }) {
           <div className="p-4 border-t border-gray-200">
             <div className="flex items-center px-4 py-3">
               <div className="flex-shrink-0">
-                <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                  <span className="text-indigo-600 font-semibold text-sm">
-                    {user?.email?.charAt(0).toUpperCase() || 'U'}
+                <div className={`w-10 h-10 ${guestMode ? 'bg-amber-100' : 'bg-indigo-100'} rounded-full flex items-center justify-center`}>
+                  <span className={`${guestMode ? 'text-amber-600' : 'text-indigo-600'} font-semibold text-sm`}>
+                    {guestMode ? 'G' : (user?.email?.charAt(0).toUpperCase() || 'U')}
                   </span>
                 </div>
               </div>
               <div className="ml-3 flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">
-                  {user?.user_metadata?.name || 'User'}
+                  {guestMode ? 'Guest User' : (user?.user_metadata?.name || 'User')}
                 </p>
                 <p className="text-xs text-gray-500 truncate">
-                  {user?.email}
+                  {guestMode ? 'Local storage only' : user?.email}
                 </p>
               </div>
             </div>
+            {guestMode && (
+              <div className="mx-4 mb-2 p-2 bg-amber-50 rounded-lg">
+                <p className="text-xs text-amber-700">
+                  ⚠️ Data saved locally only
+                </p>
+              </div>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -176,7 +190,7 @@ export default function Layout({ children }) {
               <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
-              Sign out
+              {guestMode ? 'Exit' : 'Sign out'}
             </Button>
           </div>
         </div>
@@ -217,9 +231,9 @@ export default function Layout({ children }) {
               {/* Mobile user menu */}
               <div className="lg:hidden">
                 <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                    <span className="text-indigo-600 font-semibold text-xs">
-                      {user?.email?.charAt(0).toUpperCase() || 'U'}
+                  <div className={`w-8 h-8 ${guestMode ? 'bg-amber-100' : 'bg-indigo-100'} rounded-full flex items-center justify-center`}>
+                    <span className={`${guestMode ? 'text-amber-600' : 'text-indigo-600'} font-semibold text-xs`}>
+                      {guestMode ? 'G' : (user?.email?.charAt(0).toUpperCase() || 'U')}
                     </span>
                   </div>
                 </button>

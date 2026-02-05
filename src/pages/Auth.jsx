@@ -3,6 +3,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { Button, Input, Alert } from '../components/ui'
 
+// Check if Supabase is configured
+const isSupabaseConfigured = import.meta.env.VITE_SUPABASE_URL && 
+  !import.meta.env.VITE_SUPABASE_URL.includes('placeholder')
+
 export default function Auth() {
   const [mode, setMode] = useState('login') // 'login', 'signup', 'forgot'
   const [email, setEmail] = useState('')
@@ -14,6 +18,13 @@ export default function Auth() {
   
   const { login, register, forgotPassword, loading } = useAuth()
   const navigate = useNavigate()
+
+  // Allow bypassing auth for local testing
+  const handleContinueWithoutAccount = () => {
+    // Store a flag in localStorage to indicate guest mode
+    localStorage.setItem('guestMode', 'true')
+    navigate('/dashboard')
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -27,6 +38,12 @@ export default function Auth() {
 
     if (mode === 'signup' && password.length < 6) {
       setError('Password must be at least 6 characters')
+      return
+    }
+
+    // Check if Supabase is configured
+    if (!isSupabaseConfigured) {
+      setError('Supabase is not configured. Use "Continue without account" for local testing, or set up Supabase credentials in your .env file.')
       return
     }
 
@@ -198,6 +215,32 @@ export default function Auth() {
               {mode === 'signup' && 'Create account'}
               {mode === 'forgot' && 'Send reset link'}
             </Button>
+
+            {/* Continue without account option */}
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">or</span>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              fullWidth
+              size="lg"
+              onClick={handleContinueWithoutAccount}
+            >
+              Continue without account
+            </Button>
+            
+            {!isSupabaseConfigured && (
+              <p className="text-xs text-amber-600 text-center mt-2">
+                ⚠️ Supabase not configured. Data will be saved locally only.
+              </p>
+            )}
           </form>
 
           <div className="mt-6">

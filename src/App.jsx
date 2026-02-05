@@ -11,6 +11,9 @@ import Results from './pages/Results'
 // Layout
 import Layout from './components/layout/Layout'
 
+// Check if user is in guest mode
+const isGuestMode = () => localStorage.getItem('guestMode') === 'true'
+
 // Protected Route wrapper
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth()
@@ -23,14 +26,15 @@ const ProtectedRoute = ({ children }) => {
     )
   }
 
-  if (!isAuthenticated) {
+  // Allow access if authenticated OR in guest mode
+  if (!isAuthenticated && !isGuestMode()) {
     return <Navigate to="/auth" replace />
   }
 
   return children
 }
 
-// Public Route wrapper (redirects to dashboard if authenticated)
+// Public Route wrapper (redirects to dashboard if authenticated or guest)
 const PublicRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth()
 
@@ -42,7 +46,7 @@ const PublicRoute = ({ children }) => {
     )
   }
 
-  if (isAuthenticated) {
+  if (isAuthenticated || isGuestMode()) {
     return <Navigate to="/dashboard" replace />
   }
 
