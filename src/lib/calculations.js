@@ -62,15 +62,26 @@ export const calculateSIPFV = (monthlyAmount, annualRate, years) => {
  * PMT = FV * r / ((1 + r)^n - 1)
  */
 export const calculateRequiredSIP = (targetFV, annualRate, years) => {
-  if (years <= 0 || targetFV <= 0) return 0
+  // Handle edge cases
+  if (!targetFV || targetFV <= 0) return 0
+  if (!years || years <= 0) return 0
+  if (annualRate === undefined || annualRate === null) annualRate = 0.12 // Default 12%
+  
   const monthlyRate = annualToMonthlyRate(annualRate)
   const months = years * 12
   
-  if (monthlyRate === 0) {
+  if (monthlyRate === 0 || isNaN(monthlyRate)) {
     return targetFV / months
   }
   
-  return targetFV * monthlyRate / (Math.pow(1 + monthlyRate, months) - 1)
+  const result = targetFV * monthlyRate / (Math.pow(1 + monthlyRate, months) - 1)
+  
+  // Ensure we don't return NaN or Infinity
+  if (isNaN(result) || !isFinite(result)) {
+    return targetFV / months // Fallback to simple division
+  }
+  
+  return result
 }
 
 /**
@@ -381,12 +392,19 @@ export const calculateProjectedWealth = (
   yearsToTarget,
   preTargetReturn
 ) => {
-  // Project assets
-  const projectedAssets = projectAssets(assets.filter(a => a.isLiquid !== false), yearsToTarget)
-  const totalAssetsFV = projectedAssets.reduce((sum, a) => sum + a.projectedValue, 0)
+  // Ensure valid inputs
+  const validAssets = Array.isArray(assets) ? assets : []
+  const validSIP = existingSIP || 0
+  const validYears = Math.max(1, yearsToTarget || 1)
+  const validReturn = preTargetReturn ?? 0.12
   
-  // Project SIP
-  const sipFV = calculateSIPFV(existingSIP, preTargetReturn, yearsToTarget)
+  // Project assets (only liquid assets)
+  const liquidAssets = validAssets.filter(a => a.isLiquid !== false && a.currentValue > 0)
+  const projectedAssets = projectAssets(liquidAssets, validYears)
+  const totalAssetsFV = projectedAssets.reduce((sum, a) => sum + (a.projectedValue || 0), 0)
+  
+  // Project SIP (if any)
+  const sipFV = validSIP > 0 ? calculateSIPFV(validSIP, validReturn, validYears) : 0
   
   return {
     projectedAssets,
@@ -405,21 +423,46 @@ export const calculateGapAnalysis = (
   yearsToTarget,
   preTargetReturn
 ) => {
-  const gap = requiredCorpus - projectedWealth
+  // Ensure valid inputs
+  const validRequiredCorpus = requiredCorpus || 0
+  const validProjectedWealth = projectedWealth || 0
+  const validYears = Math.max(1, yearsToTarget || 1) // Minimum 1 year
+  const validReturn = preTargetReturn ?? 0.12
+  
+  const gap = validRequiredCorpus - validProjectedWealth
   const hasShortfall = gap > 0
   
-  const requiredSIP = hasShortfall 
-    ? calculateRequiredSIP(gap, preTargetReturn, yearsToTarget)
-    : 0
+  // Calculate required SIP to close the gap
+  let requiredSIP = 0
+  if (hasShortfall && validYears > 0) {
+    requiredSIP = calculateRequiredSIP(gap, validReturn, validYears)
+    
+    // Debug logging for troubleshooting
+    if (typeof window !== 'undefined' && window.DEBUG_CALC) {
+      console.log('Gap Analysis:', {
+        requiredCorpus: validRequiredCorpus,
+        projectedWealth: validProjectedWealth,
+        gap,
+        yearsToTarget: validYears,
+        preTargetReturn: validReturn,
+        calculatedSIP: requiredSIP
+      })
+    }
+  }
+  
+  // Calculate on-track percentage
+  const onTrackPercentage = validRequiredCorpus > 0 
+    ? Math.min(100, (validProjectedWealth / validRequiredCorpus) * 100)
+    : 100
   
   return {
-    requiredCorpus,
-    projectedWealth,
+    requiredCorpus: validRequiredCorpus,
+    projectedWealth: validProjectedWealth,
     gap: hasShortfall ? gap : 0,
     surplus: hasShortfall ? 0 : Math.abs(gap),
     hasShortfall,
     requiredSIP,
-    onTrackPercentage: Math.min(100, (projectedWealth / requiredCorpus) * 100)
+    onTrackPercentage
   }
 }
 
@@ -433,34 +476,34 @@ export const calculateRetirementPlan = (planData) => {
     mode, // 'traditional', 'fire', 'barista', 'coast', 'fatfire'
     personA,
     personB,
-    lifeExpectancy,
-    assumptions,
-    assets,
-    expenses,
-    incomeStreams,
-    existingSIP
+    lifeExpectancy = 85,
+    assumptions = {},
+    assets = [],
+    expenses = [],
+    incomeStreams = [],
+    existingSIP = 0
   } = planData
   
   const currentYear = new Date().getFullYear()
-  const currentAge = Math.min(personA.age, personB?.age || personA.age)
+  const currentAge = Math.min(personA?.age || 30, personB?.age || personA?.age || 30)
   const retirementAge = assumptions.fiAge || Math.min(
-    personA.retirementAge, 
-    personB?.retirementAge || personA.retirementAge
+    personA?.retirementAge || 60, 
+    personB?.retirementAge || personA?.retirementAge || 60
   )
-  const yearsToRetirement = retirementAge - currentAge
-  const yearsInRetirement = lifeExpectancy - retirementAge
+  const yearsToRetirement = Math.max(1, retirementAge - currentAge) // Minimum 1 year
+  const yearsInRetirement = Math.max(1, lifeExpectancy - retirementAge) // Minimum 1 year
   
-  const {
-    inflation,
-    preRetirementReturn,
-    postRetirementReturn,
-    swr,
-    buffer,
-    stepUpSIP
-  } = assumptions
+  // Extract assumptions with defaults
+  const inflation = assumptions.inflation ?? 0.06
+  const preRetirementReturn = assumptions.preRetirementReturn ?? 0.12
+  const postRetirementReturn = assumptions.postRetirementReturn ?? 0.08
+  const swr = assumptions.swr ?? 0.04
+  const buffer = assumptions.buffer ?? 0.10
+  const stepUpSIP = assumptions.stepUpSIP ?? 0.10
   
   // Calculate monthly living expenses
-  const monthlyLiving = expenses.find(e => e.type === 'monthly_living')?.amount || 0
+  const monthlyLivingExpense = expenses.find(e => e.type === 'monthly_living' || e.type === 'monthly')
+  const monthlyLiving = monthlyLivingExpense?.amount || 0
   
   // Calculate post-FI income
   const postFIIncome = incomeStreams.reduce((sum, inc) => {
@@ -537,25 +580,37 @@ export const calculateRetirementPlan = (planData) => {
   
   // Calculate one-time and recurring goals
   const goalResults = expenses
-    .filter(e => e.type !== 'monthly_living')
+    .filter(e => e.type !== 'monthly_living' && e.type !== 'monthly')
     .map(expense => {
-      if (expense.type === 'onetime') {
-        return calculateOneTimeGoal(
-          expense.amount,
-          expense.amountMode === 'today',
-          expense.targetYear - currentYear,
-          inflation,
-          preRetirementReturn
-        )
+      if (expense.type === 'onetime' || expense.type === 'one-time') {
+        const yearsFromNow = (expense.targetYear || currentYear + 10) - currentYear
+        return {
+          ...calculateOneTimeGoal(
+            expense.amount || 0,
+            expense.amountMode === 'today',
+            Math.max(1, yearsFromNow),
+            inflation,
+            preRetirementReturn
+          ),
+          name: expense.name
+        }
       } else {
-        return calculateRecurringGoal(
-          expense.amount,
-          expense.amountMode === 'today',
-          expense.startYear - currentYear,
-          expense.endYear - currentYear,
-          expense.escalation || inflation,
-          preRetirementReturn
-        )
+        // Yearly recurring expense
+        const startYearRel = Math.max(0, (expense.startYear || currentYear) - currentYear)
+        const endYearRel = Math.max(startYearRel + 1, (expense.endYear || currentYear + 20) - currentYear)
+        const escalation = typeof expense.escalation === 'number' ? expense.escalation : inflation
+        
+        return {
+          ...calculateRecurringGoal(
+            expense.amount || 0,
+            expense.amountMode === 'today',
+            startYearRel,
+            endYearRel,
+            escalation,
+            preRetirementReturn
+          ),
+          name: expense.name
+        }
       }
     })
   
